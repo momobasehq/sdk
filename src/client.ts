@@ -37,12 +37,14 @@ import type {
 	WorkerState,
 } from "./types.js";
 
+/** Configures application authentication and API access. */
 export interface MomobaseClientOptions {
 	baseUrl: string;
 	clientId: string;
 	clientSecret: string;
 	tokenSkewSeconds?: number;
 }
+/** Configures administrator authentication and API access. */
 export interface AdminClientOptions {
 	baseUrl: string;
 	email?: string;
@@ -50,9 +52,7 @@ export interface AdminClientOptions {
 	accessToken?: string;
 	refreshToken?: string;
 	tokenSkewSeconds?: number;
-	/** Called whenever the session's tokens change, including on refresh. A browser
-	 * client uses it to persist the refresh token so a page reload does not log the
-	 * user out; passing undefined signals that the session was cleared. */
+	/** Receives token changes so callers can persist or clear a session. */
 	onTokenChange?: (token: TokenSnapshot | undefined) => void;
 }
 /** The current session tokens and the epoch milliseconds at which they expire. */
@@ -122,6 +122,7 @@ abstract class SessionClient {
 	protected abstract refresh(
 		signal?: AbortSignal,
 	): Promise<OAuthTokenResponse>;
+	/** Clears the active session token. */
 	clearToken() {
 		this.token = undefined;
 		this.onTokenChange?.(undefined);
@@ -237,10 +238,13 @@ abstract class SessionClient {
 	}
 }
 
+/** Calls application-authenticated Momobase endpoints. */
 export class MomobaseClient extends SessionClient {
+	/** Creates an application client. */
 	constructor(private readonly options: MomobaseClientOptions) {
 		super(options.baseUrl, options.tokenSkewSeconds);
 	}
+	/** Authenticates with the configured application credential. */
 	authenticate(signal?: AbortSignal) {
 		return this.form(
 			"/api/v1/token",
@@ -252,6 +256,7 @@ export class MomobaseClient extends SessionClient {
 			signal,
 		);
 	}
+	/** Refreshes the application session or authenticates again. */
 	async refresh(signal?: AbortSignal) {
 		if (!this.token?.refreshToken) return this.authenticate(signal);
 		try {
@@ -268,9 +273,9 @@ export class MomobaseClient extends SessionClient {
 			return this.authenticate(signal);
 		}
 	}
-	/** Lists the payment methods this deployment can currently serve. A checkout
-	 * screen calls this first, then sends the chosen method back as payment_method. */
+	/** Discovers payment methods currently available for routing. */
 	readonly paymentMethods = {
+		/** Lists available payment methods. */
 		list: (
 			q: { serviceType?: ServiceType; country?: string } = {},
 			o: RequestOptions = {},
@@ -284,7 +289,9 @@ export class MomobaseClient extends SessionClient {
 			);
 		},
 	};
+	/** Creates collection payments. */
 	readonly collections = {
+		/** Creates a collection. */
 		create: (p: CreateCollectionRequest, o: RequestOptions = {}) => {
 			validatePayment("collection", p);
 			return this.post<CreatePaymentResponse>(
@@ -294,7 +301,9 @@ export class MomobaseClient extends SessionClient {
 			);
 		},
 	};
+	/** Creates disbursement payments. */
 	readonly disbursements = {
+		/** Creates a disbursement. */
 		create: (p: CreateDisbursementRequest, o: RequestOptions = {}) => {
 			validatePayment("disbursement", p);
 			return this.post<CreatePaymentResponse>(
@@ -304,9 +313,12 @@ export class MomobaseClient extends SessionClient {
 			);
 		},
 	};
+	/** Reads application transactions. */
 	readonly transactions = {
+		/** Gets a transaction by ID. */
 		get: (id: string, o: RequestOptions = {}) =>
 			this.get<Transaction>(endpoint("/api/v1/transactions", id), o),
+		/** Gets a transaction by application reference. */
 		getByReference: (ref: string, o: RequestOptions = {}) =>
 			this.get<Transaction>(
 				endpoint("/api/v1/transactions/by-reference", ref),
@@ -315,9 +327,11 @@ export class MomobaseClient extends SessionClient {
 	};
 }
 
+/** Calls administrator-authenticated Momobase endpoints. */
 export class MomobaseAdminClient extends SessionClient {
 	private email?: string;
 	private password?: string;
+	/** Creates an administrator client. */
 	constructor(o: AdminClientOptions) {
 		super(o.baseUrl, o.tokenSkewSeconds);
 		this.email = o.email;
@@ -325,14 +339,13 @@ export class MomobaseAdminClient extends SessionClient {
 		this.onTokenChange = o.onTokenChange;
 		if (o.accessToken) this.setAccessToken(o.accessToken, o.refreshToken);
 	}
+	/** Replaces credentials and clears the current session. */
 	setCredentials(email: string, password: string) {
 		this.email = email;
 		this.password = password;
 		this.clearToken();
 	}
-	/** Installs tokens obtained elsewhere, such as from a restored browser session.
-	 * Without expiresInSeconds the access token is treated as already expired, so the
-	 * next request refreshes it rather than spending a round trip discovering a 401. */
+	/** Restores tokens obtained outside this client. */
 	setAccessToken(
 		accessToken: string,
 		refreshToken?: string,
@@ -345,6 +358,7 @@ export class MomobaseAdminClient extends SessionClient {
 		this.token = { accessToken, refreshToken, expiresAt: Date.now() + ttl };
 		this.onTokenChange?.({ ...this.token });
 	}
+	/** Authenticates with the configured administrator credentials. */
 	authenticate(signal?: AbortSignal) {
 		if (!this.email || !this.password)
 			return Promise.reject(
@@ -360,6 +374,7 @@ export class MomobaseAdminClient extends SessionClient {
 			signal,
 		);
 	}
+	/** Refreshes the administrator session or authenticates again. */
 	async refresh(signal?: AbortSignal) {
 		if (!this.token?.refreshToken) return this.authenticate(signal);
 		try {
@@ -376,66 +391,83 @@ export class MomobaseAdminClient extends SessionClient {
 			return this.authenticate(signal);
 		}
 	}
+	/** Ends the current administrator session. */
 	logout() {
 		return this.post<unknown>("/api/admin/logout");
 	}
+	/** Reads system health and runtime state. */
 	readonly system = {
+		/** Gets runtime metadata. */
 		info: () => this.get<SystemInfo>("/api/admin/system/info"),
+		/** Gets runtime health. */
 		health: () => this.get<SystemHealth>("/api/admin/system/health"),
+		/** Lists configured workers. */
 		workers: (o?: ListOptions) =>
 			this.get<PaginatedData<WorkerState>>(
 				`/api/admin/workers${query(o)}`,
 			),
+		/** Lists initialized provider runtimes. */
 		runtimeProviders: (o?: ListOptions) =>
 			this.get<PaginatedData<RuntimeProvider>>(
 				`/api/admin/runtime/providers${query(o)}`,
 			),
 	};
-	/** The permission catalogue and the roles built from it. Populate role pickers and
-	 * scope pickers from these rather than from a hardcoded list. */
+	/** Manages permissions and roles. */
 	readonly authz = {
+		/** Lists assignable permissions. */
 		permissions: (audience?: PermissionAudience) =>
 			this.get<PermissionList>(
 				`/api/admin/permissions${audience ? `?audience=${audience}` : ""}`,
 			),
+		/** Lists roles. */
 		roles: () => this.get<RoleList>("/api/admin/roles"),
+		/** Creates a role. */
 		createRole: (p: RoleRequest & { name: string }) =>
 			this.post<Role>("/api/admin/roles", p),
+		/** Replaces a role. */
 		updateRole: (name: string, p: RoleRequest) =>
 			this.patch<unknown>(endpoint("/api/admin/roles", name), p),
+		/** Deletes a custom role. */
 		deleteRole: (name: string) =>
 			this.delete<unknown>(endpoint("/api/admin/roles", name)),
 	};
+	/** Manages administrators. */
 	readonly users = {
+		/** Gets the signed-in administrator. */
 		me: () => this.get<AdminUser>("/api/admin/me"),
+		/** Lists administrators. */
 		list: (o?: ListOptions) =>
 			this.get<PaginatedData<AdminUser>>(`/api/admin/users${query(o)}`),
+		/** Creates an administrator. */
 		create: (p: {
 			name: string;
 			email: string;
 			password: string;
 			role?: string;
 		}) => this.post<AdminUser>("/api/admin/users", p),
+		/** Changes an administrator password. */
 		changePassword: (id: string, password: string) =>
 			this.patch<unknown>(
 				endpoint("/api/admin/users", id) + "/password",
 				{ password },
 			),
+		/** Changes an administrator status. */
 		changeStatus: (id: string, status: "active" | "inactive") =>
 			this.patch<unknown>(endpoint("/api/admin/users", id) + "/status", {
 				status,
 			}),
-		/** Reassigns an administrator to a different role. Takes effect on their next
-		 * request — permissions resolve from the role rather than from the token, so no
-		 * session has to be revoked. An administrator cannot change their own role. */
+		/** Reassigns an administrator to another role. */
 		changeRole: (id: string, role: string) =>
 			this.patch<unknown>(endpoint("/api/admin/users", id) + "/role", {
 				role,
 			}),
 	};
+	/** Manages applications and credentials. */
 	readonly apps = {
+		/** Lists applications. */
 		list: (o?: ListOptions) =>
 			this.get<PaginatedData<App>>(`/api/admin/apps${query(o)}`),
+		/** Creates an application. */
 		create: (p: {
 			name: string;
 			description?: string;
@@ -443,7 +475,9 @@ export class MomobaseAdminClient extends SessionClient {
 			currency: string;
 			charges?: ChargeSchedule;
 		}) => this.post<App>("/api/admin/apps", p),
+		/** Gets an application. */
 		get: (id: string) => this.get<App>(endpoint("/api/admin/apps", id)),
+		/** Updates an application. */
 		update: (
 			id: string,
 			p: Partial<
@@ -457,6 +491,7 @@ export class MomobaseAdminClient extends SessionClient {
 				>
 			>,
 		) => this.patch<App>(endpoint("/api/admin/apps", id), p),
+		/** Changes an application status. */
 		changeStatus: (
 			id: string,
 			status: "active" | "disabled" | "suspended",
@@ -464,10 +499,12 @@ export class MomobaseAdminClient extends SessionClient {
 			this.patch<unknown>(endpoint("/api/admin/apps", id) + "/status", {
 				status,
 			}),
+		/** Lists an application's credentials. */
 		credentials: (id: string, o?: ListOptions) =>
 			this.get<PaginatedData<AppCredential>>(
 				`${endpoint("/api/admin/apps", id)}/credentials${query(o)}`,
 			),
+		/** Creates an application credential. */
 		createCredential: (
 			id: string,
 			p: { name?: string; scopes?: string; expires_at?: string },
@@ -476,26 +513,33 @@ export class MomobaseAdminClient extends SessionClient {
 				endpoint("/api/admin/apps", id) + "/credentials",
 				p,
 			),
+		/** Revokes an application credential. */
 		revokeCredential: (id: string, cid: string) =>
 			this.patch<unknown>(
 				`${endpoint("/api/admin/apps", id)}/credentials/${encodeURIComponent(cid)}/revoke`,
 			),
+		/** Rotates an application credential. */
 		rotateCredential: (id: string, cid: string) =>
 			this.post<CreatedCredential>(
 				`${endpoint("/api/admin/apps", id)}/credentials/${encodeURIComponent(cid)}/rotate`,
 			),
 	};
+	/** Manages provider accounts and runtime status. */
 	readonly providers = {
+		/** Lists provider accounts. */
 		list: (o?: ListOptions) =>
 			this.get<PaginatedData<ProviderAccount>>(
 				`/api/admin/providers${query(o)}`,
 			),
+		/** Gets a provider account. */
 		get: (id: string) =>
 			this.get<ProviderAccount>(
 				endpoint("/api/admin/providers/accounts", id),
 			),
+		/** Lists provider codes compiled into the server. */
 		registry: () =>
 			this.get<ProviderRegistry>("/api/admin/providers/registry"),
+		/** Creates a provider account. */
 		createAccount: (p: {
 			provider_code: string;
 			name: string;
@@ -505,6 +549,7 @@ export class MomobaseAdminClient extends SessionClient {
 			charges?: ChargeSchedule;
 			config: Record<string, unknown>;
 		}) => this.post<ProviderAccount>("/api/admin/providers/accounts", p),
+		/** Updates provider location, currency, and charges. */
 		updateSettings: (
 			id: string,
 			p: { country: string; currency: string; charges: ChargeSchedule },
@@ -513,64 +558,79 @@ export class MomobaseAdminClient extends SessionClient {
 				endpoint("/api/admin/providers/accounts", id) + "/settings",
 				p,
 			),
+		/** Replaces provider configuration. */
 		updateConfig: (id: string, config: Record<string, unknown>) =>
 			this.patch<unknown>(
 				endpoint("/api/admin/providers/accounts", id) + "/config",
 				{ config },
 			),
+		/** Activates a provider account. */
 		activate: (id: string) =>
 			this.patch<unknown>(
 				endpoint("/api/admin/providers/accounts", id) + "/activate",
 			),
+		/** Deactivates a provider account. */
 		deactivate: (id: string) =>
 			this.patch<unknown>(
 				endpoint("/api/admin/providers/accounts", id) + "/deactivate",
 			),
+		/** Tests a provider account connection. */
 		test: (id: string) =>
 			this.post<unknown>(
 				endpoint("/api/admin/providers/accounts", id) + "/test",
 			),
+		/** Gets one provider balance. */
 		balance: (id: string, country?: string) =>
 			this.get<ProviderBalance>(
 				endpoint("/api/admin/providers/accounts", id) +
 					"/balance" +
 					(country ? `?country=${encodeURIComponent(country)}` : ""),
 			),
+		/** Lists active provider balances. */
 		activeBalances: (o?: ListOptions) =>
 			this.get<PaginatedData<ProviderBalanceResult>>(
 				`/api/admin/balances/providers${query(o)}`,
 			),
+		/** Lists provider health snapshots. */
 		health: (o?: ListOptions) =>
 			this.get<PaginatedData<ProviderHealthSnapshot>>(
 				`/api/admin/health/providers${query(o)}`,
 			),
 	};
+	/** Manages payment routes. */
 	readonly routes = {
+		/** Lists payment routes. */
 		list: (o?: ListOptions) =>
 			this.get<PaginatedData<PaymentRoute>>(
 				`/api/admin/routes${query(o)}`,
 			),
+		/** Creates a payment route. */
 		create: (
 			p: Omit<
 				PaymentRoute,
 				"id" | "provider_name" | "created_at" | "updated_at"
 			>,
 		) => this.post<PaymentRoute>("/api/admin/routes", p),
+		/** Updates route priority and status. */
 		update: (id: string, p: { priority: number; active: boolean }) =>
 			this.patch<unknown>(endpoint("/api/admin/routes", id), p),
 	};
+	/** Reads transactions and audit logs. */
 	readonly transactions = {
+		/** Lists transactions. */
 		list: (o?: ListOptions) =>
 			this.get<PaginatedData<AdminTransaction>>(
 				`/api/admin/transactions${query(o)}`,
 			),
+		/** Lists audit logs. */
 		auditLogs: (o?: ListOptions) =>
 			this.get<PaginatedData<AuditLog>>(
 				`/api/admin/audit-logs${query(o)}`,
 			),
 	};
-	/** Aggregates of the same rows transactions.list exposes, bucketed for charting. */
+	/** Reads transaction analytics. */
 	readonly analytics = {
+		/** Gets bucketed transaction analytics. */
 		transactions: (q: AnalyticsQuery = {}) => {
 			const search = new URLSearchParams();
 			if (q.from) search.set("from", q.from);
