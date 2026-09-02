@@ -1,14 +1,4 @@
-/**
- * The permission codes this release of Momobase seeds.
- *
- * The server is the source of truth — `admin.authz.permissions()` returns the live
- * catalogue — but a client that gates its own UI needs the codes at the point where a
- * screen is written, not at run time. These constants exist so that a mistyped code is
- * a compile error rather than a permission that silently never matches.
- *
- * A Go test asserts this list matches the server's catalogue exactly, in both
- * directions, so the two cannot drift apart unnoticed.
- */
+/** Known administrator permission codes for autocomplete and UI gates. */
 export const AdminPermissions = {
 	systemRead: "system:read",
 	transactionsRead: "transactions:read",
@@ -44,8 +34,7 @@ export const AppScopes = {
 	transactionsRead: "transactions:read",
 } as const;
 
-/** Grants every permission in its audience, including ones a later release adds. A
- * client checking a permission must honour it rather than enumerate around it. */
+/** Grants every permission in an audience. */
 export const PermissionWildcard = "*";
 
 /** A permission an administrator's role may grant. */
@@ -54,17 +43,10 @@ export type AdminPermission =
 /** A scope an application credential may hold. */
 export type AppScope = (typeof AppScopes)[keyof typeof AppScopes];
 
-/**
- * Any permission code.
- *
- * The `string & {}` arm is deliberate: it keeps editor autocomplete listing the known
- * codes while still accepting one a newer server introduced, so an older client does
- * not fail to compile against a catalogue that has grown.
- */
+/** Accepts known codes while preserving autocomplete for newer server codes. */
 export type PermissionCode = AdminPermission | AppScope | (string & {});
 
-/** Reports whether held satisfies required, honouring the wildcard. This mirrors the
- * server's own check, so client-side gating and server-side enforcement agree. */
+/** Reports whether held permissions satisfy a required code. */
 export function permitted(
 	held: readonly string[] | undefined,
 	required: PermissionCode,

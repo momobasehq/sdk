@@ -1,10 +1,15 @@
 import type { APIEnvelope } from "./types.js";
 
+/** Represents a non-successful Momobase API response. */
 export class MomobaseAPIError extends Error {
+	/** HTTP response status. */
 	readonly status: number;
+	/** Stable Momobase error code. */
 	readonly code: string;
+	/** Parsed response body when available. */
 	readonly body: unknown;
 
+	/** Creates an API error. */
 	constructor(status: number, code: string, message: string, body: unknown) {
 		super(message);
 		this.name = "MomobaseAPIError";
@@ -13,6 +18,7 @@ export class MomobaseAPIError extends Error {
 		this.body = body;
 	}
 
+	/** Parses an API error from a Fetch response. */
 	static async fromResponse(response: Response): Promise<MomobaseAPIError> {
 		let body: unknown;
 		try {

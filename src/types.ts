@@ -5,8 +5,11 @@ export const PaymentMethods = [
 	"bank_transfer",
 	"wallet",
 ] as const;
+/** One supported payment rail. */
 export type PaymentMethod = (typeof PaymentMethods)[number];
+/** A collection or disbursement operation. */
 export type ServiceType = "collection" | "disbursement";
+/** A payment transaction lifecycle state. */
 export type TransactionStatus =
 	| "pending"
 	| "processing"
@@ -15,52 +18,61 @@ export type TransactionStatus =
 	| "unknown"
 	| "cancelled"
 	| "expired";
+/** A flat or percentage charge calculation. */
 export type ChargeType = "flat" | "percentage";
+/** Defines one charge value and calculation type. */
 export interface ChargeRule {
 	type: ChargeType;
 	value: number;
 }
+/** Defines collection and disbursement charges. */
 export interface ChargeSchedule {
 	collection: ChargeRule;
 	disbursement: ChargeRule;
 }
 
+/** Describes an API error. */
 export interface APIError {
 	code: string;
 	message: string;
 }
+/** Wraps every Momobase API response. */
 export interface APIEnvelope<T = unknown> {
 	success: boolean;
 	data?: T;
 	error?: APIError;
 	message?: string;
 }
+/** Contains one page of API results. */
 export interface PaginatedData<T> {
 	page: number;
 	total: number;
 	items: T[];
 	count: number;
 }
+/** Controls paginated list requests. */
 export interface ListOptions {
 	page?: number;
 	perPage?: number;
 	signal?: AbortSignal;
 }
+/** Controls an individual API request. */
 export interface RequestOptions {
 	idempotencyKey?: string;
 	signal?: AbortSignal;
 }
 
+/** Describes a payment customer or recipient. */
 export interface PartyPayload {
 	name?: string;
 	email?: string;
 }
-/** One payment method this deployment can currently serve. Fetch these before
- * collecting any payment details: the list only contains methods that will route. */
+/** Describes one currently routable payment method. */
 export interface AvailablePaymentMethod {
 	service_type: ServiceType;
 	payment_method: PaymentMethod;
 }
+/** Contains currently routable payment methods. */
 export interface AvailablePaymentMethods {
 	items: AvailablePaymentMethod[];
 	count: number;
@@ -83,12 +95,15 @@ interface PaymentRequest {
 	description?: string;
 	metadata?: Record<string, unknown>;
 }
+/** Creates a collection payment. */
 export interface CreateCollectionRequest extends PaymentRequest {
 	customer?: PartyPayload;
 }
+/** Creates a disbursement payment. */
 export interface CreateDisbursementRequest extends PaymentRequest {
 	recipient?: PartyPayload;
 }
+/** Describes a newly created payment. */
 export interface CreatePaymentResponse {
 	transaction_id: string;
 	reference: string;
@@ -100,6 +115,7 @@ export interface CreatePaymentResponse {
 	platform_fee: number;
 	message: string;
 }
+/** Describes an application-visible transaction. */
 export interface Transaction {
 	id: string;
 	app_id: string;
@@ -122,12 +138,14 @@ export interface Transaction {
 	created_at: string;
 	updated_at: string;
 }
+/** Describes a transaction with administrator fields. */
 export interface AdminTransaction extends Transaction {
 	provider_fee: number;
 	reconciliation_attempts: number;
 	last_reconciled_at?: string;
 	next_reconcile_at?: string;
 }
+/** Contains OAuth access and refresh tokens. */
 export interface OAuthTokenResponse {
 	access_token: string;
 	token_type: string;
@@ -140,13 +158,9 @@ export interface OAuthTokenResponse {
 	client_id?: string;
 }
 
-/** A permission audience. Admin permissions are granted through roles; app
- * permissions are granted to a credential as a scope. The two are separate
- * namespaces, so a code may exist in both and mean different things. */
+/** Identifies an administrator or application permission audience. */
 export type PermissionAudience = "admin" | "app";
-/** One entry of the server's seeded permission catalogue. Never hardcode these —
- * fetch them, so a permission added by a later release appears without a release
- * of this client. */
+/** Describes one server permission. */
 export interface Permission {
 	id: string;
 	code: string;
@@ -155,12 +169,12 @@ export interface Permission {
 	created_at: string;
 	updated_at: string;
 }
+/** Contains the permission catalogue. */
 export interface PermissionList {
 	items: Permission[];
 	count: number;
 }
-/** A named set of administrative permissions. `system` roles are seeded and
- * read-only; only custom roles can be changed or deleted. */
+/** Describes a named set of administrator permissions. */
 export interface Role {
 	id: string;
 	name: string;
@@ -170,20 +184,18 @@ export interface Role {
 	created_at: string;
 	updated_at: string;
 }
+/** Contains available administrator roles. */
 export interface RoleList {
 	items: Role[];
 	count: number;
 }
-/** Creates or replaces a role. `name` is ignored when updating: the path carries it,
- * and a role's name is its identity because AdminUser.role refers to it. */
+/** Creates or replaces a role. */
 export interface RoleRequest {
 	name?: string;
 	description?: string;
 	permissions: string[];
 }
-/** `permissions` is the role's effective set, resolved per request rather than read
- * from the token, and is present on the signed-in administrator from `me()`. Gate UI
- * on it rather than on `role`. */
+/** Describes an administrator and effective permissions. */
 export interface AdminUser {
 	id: string;
 	name: string;
@@ -194,6 +206,7 @@ export interface AdminUser {
 	created_at: string;
 	updated_at: string;
 }
+/** Describes a Momobase application. */
 export interface App {
 	id: string;
 	name: string;
@@ -206,6 +219,7 @@ export interface App {
 	created_at: string;
 	updated_at: string;
 }
+/** Describes an application OAuth credential. */
 export interface AppCredential {
 	id: string;
 	app_id: string;
@@ -219,10 +233,12 @@ export interface AppCredential {
 	created_at: string;
 	updated_at: string;
 }
+/** Returns a newly created credential and its one-time secret. */
 export interface CreatedCredential {
 	credential: AppCredential;
 	client_secret: string;
 }
+/** Describes a configured provider account. */
 export interface ProviderAccount {
 	id: string;
 	provider_code: string;
@@ -237,6 +253,7 @@ export interface ProviderAccount {
 	created_at: string;
 	updated_at: string;
 }
+/** Describes one service and payment-method capability. */
 export interface ProviderCapability {
 	service_type: ServiceType;
 	payment_method: PaymentMethod;
@@ -245,6 +262,7 @@ export interface ProviderCapability {
 export interface ProviderRegistry {
 	providers: string[];
 }
+/** Describes a payment route. */
 export interface PaymentRoute {
 	id: string;
 	service_type: ServiceType;
@@ -256,6 +274,7 @@ export interface PaymentRoute {
 	created_at: string;
 	updated_at: string;
 }
+/** Describes the latest provider health check. */
 export interface ProviderHealthSnapshot {
 	provider_account_id: string;
 	provider_name: string;
@@ -274,6 +293,7 @@ export interface ProviderHealthSnapshot {
 	created_at?: string;
 	updated_at?: string;
 }
+/** Describes an administrator audit entry. */
 export interface AuditLog {
 	id: string;
 	actor_id: string;
@@ -287,6 +307,7 @@ export interface AuditLog {
 	created_at: string;
 	updated_at: string;
 }
+/** Describes an initialized provider runtime. */
 export interface RuntimeProvider {
 	provider_account_id: string;
 	provider_name: string;
@@ -299,11 +320,13 @@ export interface RuntimeProvider {
 	currency: string;
 	health?: ProviderHealthSnapshot;
 }
+/** Describes available and ledger provider balances. */
 export interface ProviderBalance {
 	currency: string;
 	available: number;
 	ledger: number;
 }
+/** Describes one provider balance query result. */
 export interface ProviderBalanceResult {
 	provider_account_id: string;
 	provider_code?: string;
@@ -312,6 +335,7 @@ export interface ProviderBalanceResult {
 	balance?: ProviderBalance;
 	error?: string;
 }
+/** Describes server runtime metadata. */
 export interface SystemInfo {
 	app_name: string;
 	app_env: string;
@@ -322,6 +346,7 @@ export interface SystemInfo {
 	go_version: string;
 	server_time: string;
 }
+/** Describes server and database health. */
 export interface SystemHealth {
 	ok: boolean;
 	database: string;
@@ -330,6 +355,7 @@ export interface SystemHealth {
 	workers_configured: string[];
 	server_time: string;
 }
+/** Describes one background worker. */
 export interface WorkerState {
 	name: string;
 	configured: boolean;
@@ -341,8 +367,7 @@ export interface ServiceCounts {
 	collection: number;
 	disbursement: number;
 }
-/** One point on an analytics time series. Quiet periods are present and zeroed, so a
- * chart shows a gap in traffic rather than joining a line across it. */
+/** Describes one transaction analytics time bucket. */
 export interface AnalyticsBucket {
 	period: string;
 	total: number;
@@ -350,13 +375,13 @@ export interface AnalyticsBucket {
 	succeeded: number;
 	failed: number;
 }
-/** Volume for one currency. Amounts are in that currency's minor unit and are
- * deliberately never summed across currencies — the total would mean nothing. */
+/** Describes payment volume for one currency. */
 export interface CurrencyVolume {
 	currency: string;
 	count: number;
 	amount: number;
 }
+/** Describes bucketed transaction counts and currency volumes. */
 export interface TransactionAnalytics {
 	from: string;
 	to: string;
@@ -366,8 +391,7 @@ export interface TransactionAnalytics {
 	by_service: ServiceCounts;
 	volume: CurrencyVolume[];
 }
-/** Narrows an analytics query. Every field is optional; the server defaults to the
- * last 30 days bucketed by day. */
+/** Filters a transaction analytics query. */
 export interface AnalyticsQuery {
 	from?: string;
 	to?: string;

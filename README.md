@@ -5,20 +5,22 @@ TypeScript SDK for Momobase.
 The public app client uses OAuth `client_credentials` and unwraps standardized API envelopes:
 
 ```ts
-import { MomobaseClient } from "momobase"
+import { MomobaseClient } from "momobase";
 
-const client = new MomobaseClient({ baseUrl, clientId, clientSecret })
-const payment = await client.collections.create(payload, { idempotencyKey: "order-1" })
+const client = new MomobaseClient({ baseUrl, clientId, clientSecret });
+const payment = await client.collections.create(payload, {
+	idempotencyKey: "order-1",
+});
 ```
 
 The admin client uses OAuth password grant and covers all backend admin endpoints:
 
 ```ts
-import { MomobaseAdminClient } from "momobase"
+import { MomobaseAdminClient } from "momobase";
 
-const admin = new MomobaseAdminClient({ baseUrl, email, password })
-await admin.authenticate()
-const apps = await admin.apps.list()
+const admin = new MomobaseAdminClient({ baseUrl, email, password });
+await admin.authenticate();
+const apps = await admin.apps.list();
 ```
 
 Successful API responses are expected as:
@@ -33,7 +35,6 @@ List responses unwrap to:
 { "page": 1, "total": 10, "items": [], "count": 10 }
 ```
 
-
 ## Token handling
 
 The SDK uses the global `fetch()` directly. There is no `fetchImpl` option.
@@ -46,23 +47,29 @@ Ask what this deployment can serve before collecting any details. The list conta
 only methods that would actually route, so a checkout can render it directly:
 
 ```ts
-const { items } = await app.paymentMethods.list({ serviceType: "collection", country: "UG" })
+const { items } = await app.paymentMethods.list({
+	serviceType: "collection",
+	country: "UG",
+});
 // [{ service_type: "collection", payment_method: "momo" }]
 ```
 
 Then post a flat payload, in the order a checkout fills it in:
 
 ```ts
-await app.collections.create({
-  payment_method: "momo",
-  scheme: "mtn",
-  account: "256770000000",
-  amount: 50000,
-  currency: "UGX",
-  country: "UG",
-  reference: "ORDER-1",
-  customer: { name: "Ada Lovelace" },
-}, { idempotencyKey: "order-1" })
+await app.collections.create(
+	{
+		payment_method: "momo",
+		scheme: "mtn",
+		account: "256770000000",
+		amount: 50000,
+		currency: "UGX",
+		country: "UG",
+		reference: "ORDER-1",
+		customer: { name: "Ada Lovelace" },
+	},
+	{ idempotencyKey: "order-1" },
+);
 ```
 
 `payment_method` and `scheme` come from the chosen method; `account` is what the user entered. `account` may be a mobile number, a bank account, a card token, or a wallet address, and the engine treats it as opaque. What counts as valid is the provider's to decide: an adapter that needs an MSISDN validates and canonicalizes it when the request is routed, and the normalized value is what the transaction records. `scheme` optionally names the network, bank, or card brand, and `metadata` passes provider-specific details through without being persisted.
