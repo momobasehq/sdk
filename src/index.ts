@@ -1,9 +1,8 @@
-export { MomobaseClient, MomobaseAdminClient } from "./client.js";
-export type {
-    AdminClientOptions,
-    MomobaseClientOptions,
-    TokenSnapshot
-} from "./client.js";
+export { MomobaseClient } from "./app.js";
+export type { MomobaseClientOptions } from "./app.js";
+export { MomobaseAdminClient } from "./admin.js";
+export type { AdminClientOptions } from "./admin.js";
+export type { TokenSnapshot } from "./session.js";
 export { MomobaseAPIError } from "./errors.js";
 export {
     AdminPermissions,
