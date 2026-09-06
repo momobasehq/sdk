@@ -1,55 +1,55 @@
 {
-	"name": "momobase",
-	"version": "1.0.0",
-	"description": "TypeScript SDK for the Momobase payment service API.",
-	"license": "MIT",
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/momobasehq/sdk.git"
-	},
-	"type": "module",
-	"main": "dist/index.js",
-	"types": "dist/index.d.ts",
-	"publishConfig": {
-		"access": "public"
-	},
-	"files": [
-		"dist"
-	],
-	"scripts": {
-		"build": "tsc -p tsconfig.json",
-		"format": "prettier --write .",
-		"format:check": "prettier --check .",
-		"lint": "eslint .",
-		"release": "release-it",
-		"typecheck": "tsc -p tsconfig.json --noEmit"
-	},
-	"devDependencies": {
-		"@eslint/js": "^10.0.1",
-		"eslint": "^10.9.1",
-		"prettier": "^3.9.6",
-		"release-it": "^20.2.1",
-		"typescript": "^5.5.0",
-		"typescript-eslint": "^8.69.0"
-	},
-	"release-it": {
-		"hooks": {
-			"before:init": [
-				"pnpm run format:check",
-				"pnpm run lint",
-				"pnpm run typecheck",
-				"pnpm run build"
-			]
-		},
-		"git": {
-			"requireBranch": "main",
-			"commitMessage": "chore(sdk): release ${version}",
-			"tagName": "v${version}",
-			"tagAnnotation": "Momobase SDK v${version}"
-		},
-		"npm": {
-			"publish": true,
-			"skipChecks": true
-		}
-	}
+    "name": "momobase",
+    "version": "1.0.0",
+    "description": "TypeScript SDK for the Momobase payment service API.",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/momobasehq/sdk.git"
+    },
+    "type": "module",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "publishConfig": {
+        "access": "public"
+    },
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "format": "prettier --write .",
+        "format:check": "prettier --check .",
+        "lint": "eslint .",
+        "release": "release-it",
+        "typecheck": "tsc -p tsconfig.json --noEmit"
+    },
+    "devDependencies": {
+        "@eslint/js": "^10.0.1",
+        "eslint": "^10.9.1",
+        "prettier": "^3.9.6",
+        "release-it": "^20.2.1",
+        "typescript": "^5.5.0",
+        "typescript-eslint": "^8.69.0"
+    },
+    "release-it": {
+        "hooks": {
+            "before:init": [
+                "pnpm run format:check",
+                "pnpm run lint",
+                "pnpm run typecheck",
+                "pnpm run build"
+            ]
+        },
+        "git": {
+            "requireBranch": "main",
+            "commitMessage": "chore(sdk): release ${version}",
+            "tagName": "v${version}",
+            "tagAnnotation": "Momobase SDK v${version}"
+        },
+        "npm": {
+            "publish": true,
+            "skipChecks": true
+        }
+    }
 }
