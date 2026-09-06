@@ -1,4 +1,4 @@
-import { endpoint, query, SessionClient } from "./session.js";
+import { endpoint, SessionClient } from "./session.js";
 import type { TokenSnapshot } from "./session.js";
 import type {
     AdminTransaction,
@@ -117,13 +117,12 @@ export class MomobaseAdminClient extends SessionClient {
         health: () => this.get<SystemHealth>("/api/admin/system/health"),
         /** Lists configured workers. */
         workers: (o?: ListOptions) =>
-            this.get<PaginatedData<WorkerState>>(
-                `/api/admin/workers${query(o)}`
-            ),
+            this.list<PaginatedData<WorkerState>>("/api/admin/workers", o),
         /** Lists initialized provider runtimes. */
         runtimeProviders: (o?: ListOptions) =>
-            this.get<PaginatedData<RuntimeProvider>>(
-                `/api/admin/runtime/providers${query(o)}`
+            this.list<PaginatedData<RuntimeProvider>>(
+                "/api/admin/runtime/providers",
+                o
             )
     };
     /** Manages permissions and roles. */
@@ -151,7 +150,7 @@ export class MomobaseAdminClient extends SessionClient {
         me: () => this.get<AdminUser>("/api/admin/me"),
         /** Lists administrators. */
         list: (o?: ListOptions) =>
-            this.get<PaginatedData<AdminUser>>(`/api/admin/users${query(o)}`),
+            this.list<PaginatedData<AdminUser>>("/api/admin/users", o),
         /** Creates an administrator. */
         create: (p: {
             name: string;
@@ -180,7 +179,7 @@ export class MomobaseAdminClient extends SessionClient {
     readonly apps = {
         /** Lists applications. */
         list: (o?: ListOptions) =>
-            this.get<PaginatedData<App>>(`/api/admin/apps${query(o)}`),
+            this.list<PaginatedData<App>>("/api/admin/apps", o),
         /** Creates an application. */
         create: (p: {
             name: string;
@@ -215,8 +214,9 @@ export class MomobaseAdminClient extends SessionClient {
             }),
         /** Lists an application's credentials. */
         credentials: (id: string, o?: ListOptions) =>
-            this.get<PaginatedData<AppCredential>>(
-                `${endpoint("/api/admin/apps", id)}/credentials${query(o)}`
+            this.list<PaginatedData<AppCredential>>(
+                `${endpoint("/api/admin/apps", id)}/credentials`,
+                o
             ),
         /** Creates an application credential. */
         createCredential: (
@@ -242,8 +242,9 @@ export class MomobaseAdminClient extends SessionClient {
     readonly providers = {
         /** Lists provider accounts. */
         list: (o?: ListOptions) =>
-            this.get<PaginatedData<ProviderAccount>>(
-                `/api/admin/providers${query(o)}`
+            this.list<PaginatedData<ProviderAccount>>(
+                "/api/admin/providers",
+                o
             ),
         /** Gets a provider account. */
         get: (id: string) =>
@@ -302,22 +303,22 @@ export class MomobaseAdminClient extends SessionClient {
             ),
         /** Lists active provider balances. */
         activeBalances: (o?: ListOptions) =>
-            this.get<PaginatedData<ProviderBalanceResult>>(
-                `/api/admin/balances/providers${query(o)}`
+            this.list<PaginatedData<ProviderBalanceResult>>(
+                "/api/admin/balances/providers",
+                o
             ),
         /** Lists provider health snapshots. */
         health: (o?: ListOptions) =>
-            this.get<PaginatedData<ProviderHealthSnapshot>>(
-                `/api/admin/health/providers${query(o)}`
+            this.list<PaginatedData<ProviderHealthSnapshot>>(
+                "/api/admin/health/providers",
+                o
             )
     };
     /** Manages payment routes. */
     readonly routes = {
         /** Lists payment routes. */
         list: (o?: ListOptions) =>
-            this.get<PaginatedData<PaymentRoute>>(
-                `/api/admin/routes${query(o)}`
-            ),
+            this.list<PaginatedData<PaymentRoute>>("/api/admin/routes", o),
         /** Creates a payment route. */
         create: (
             p: Omit<
@@ -333,14 +334,13 @@ export class MomobaseAdminClient extends SessionClient {
     readonly transactions = {
         /** Lists transactions. */
         list: (o?: ListOptions) =>
-            this.get<PaginatedData<AdminTransaction>>(
-                `/api/admin/transactions${query(o)}`
+            this.list<PaginatedData<AdminTransaction>>(
+                "/api/admin/transactions",
+                o
             ),
         /** Lists audit logs. */
         auditLogs: (o?: ListOptions) =>
-            this.get<PaginatedData<AuditLog>>(
-                `/api/admin/audit-logs${query(o)}`
-            )
+            this.list<PaginatedData<AuditLog>>("/api/admin/audit-logs", o)
     };
     /** Reads transaction analytics. */
     readonly analytics = {
