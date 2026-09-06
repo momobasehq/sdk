@@ -1,3 +1,7 @@
+<div align=center>
+
+<img width="75" src="https://github.com/momobasehq.png" />
+
 # Momobase SDK
 
 [![npm](https://img.shields.io/npm/v/momobase.svg)](https://www.npmjs.com/package/momobase)
@@ -7,13 +11,15 @@
 
 TypeScript client for the Momobase payment and administration APIs.
 
+</div>
+
 ## Install
 
 ```sh
 npm install momobase
 ```
 
-## Definitions
+## Usage
 
 ### Creating a new client instance
 
@@ -69,7 +75,7 @@ Payment calls accept `RequestOptions`; list calls accept `ListOptions`.
 
 ```ts
 { idempotencyKey?: string, signal?: AbortSignal }   // RequestOptions
-{ page?: number, perPage?: number }                 // ListOptions
+{ page?: number, perPage?: number, signal?: AbortSignal } // ListOptions
 ```
 
 ## Services

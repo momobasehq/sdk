@@ -16,7 +16,7 @@ type Method = "GET" | "POST" | "PATCH" | "DELETE";
 type CachedToken = TokenSnapshot;
 
 /** Renders list pagination as a query string. */
-export const query = (o?: ListOptions) => {
+const query = (o?: ListOptions) => {
     const q = new URLSearchParams();
     if (o?.page) q.set("page", String(o.page));
     if (o?.perPage) q.set("per_page", String(o.perPage));
@@ -147,6 +147,10 @@ export abstract class SessionClient {
     }
     protected get<T>(path: string, options?: RequestOptions) {
         return this.request<T>("GET", path, undefined, options);
+    }
+    /** Issues a paginated GET, forwarding pagination and the abort signal. */
+    protected list<T>(path: string, o?: ListOptions) {
+        return this.get<T>(path + query(o), o);
     }
     protected post<T>(
         path: string,
