@@ -44,7 +44,7 @@
         },
         "git": {
             "requireBranch": "main",
-            "commitMessage": "chore(sdk): release ${version}",
+            "commitMessage": "chore(sdk): release v${version}",
             "tagName": "v${version}",
             "tagAnnotation": "Momobase SDK v${version}"
         },
