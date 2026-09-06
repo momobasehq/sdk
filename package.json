@@ -48,6 +48,11 @@
             "tagName": "v${version}",
             "tagAnnotation": "Momobase SDK v${version}"
         },
+        "github": {
+            "release": true,
+            "releaseName": "Momobase SDK v${version}",
+            "autoGenerate": true
+        },
         "npm": {
             "publish": true,
             "skipChecks": true
