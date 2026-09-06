@@ -19,21 +19,17 @@ jobs:
         timeout-minutes: 10
         steps:
             - name: Check out repository
-              uses: actions/checkout@v6.0.2
+              uses: actions/checkout@v7
 
             - name: Set up pnpm
-              uses: pnpm/action-setup@v4.2.0
+              uses: pnpm/setup@v2
               with:
                   version: 11
-
-            - name: Set up Node
-              uses: actions/setup-node@v6.0.0
-              with:
-                  node-version: 24
-                  cache: pnpm
+                  runtime: node@24
+                  cache: true
 
             - name: Install dependencies
-              run: pnpm install --frozen-lockfile
+              run: pnpm ci
 
             - name: Check formatting
               run: pnpm run format:check
