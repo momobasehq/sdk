@@ -15,7 +15,6 @@ on:
 
 permissions:
     contents: write
-    id-token: write
 
 concurrency:
     group: npm-sdk-release
@@ -50,8 +49,14 @@ jobs:
                   git config user.name "github-actions[bot]"
                   git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+            - name: Authenticate with npm
+              env:
+                  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+              run: npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN" --location=project
+
             - name: Release SDK
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
                   RELEASE_INCREMENT: ${{ inputs.increment }}
               run: pnpm run release -- "$RELEASE_INCREMENT" --ci
