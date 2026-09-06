@@ -1,49 +1,34 @@
-import { MomobaseAPIError } from "./errors.js";
+import { endpoint, query, SessionClient } from "./session.js";
+import type { TokenSnapshot } from "./session.js";
 import type {
     AdminTransaction,
     AdminUser,
     AnalyticsQuery,
-    APIEnvelope,
     App,
     AppCredential,
     AuditLog,
     ChargeSchedule,
-    CreateCollectionRequest,
-    CreateDisbursementRequest,
-    CreatePaymentResponse,
     CreatedCredential,
     ListOptions,
-    AvailablePaymentMethods,
-    OAuthTokenResponse,
     PaginatedData,
     PaymentRoute,
+    PermissionAudience,
+    PermissionList,
     ProviderAccount,
     ProviderBalance,
     ProviderBalanceResult,
     ProviderHealthSnapshot,
     ProviderRegistry,
-    RequestOptions,
-    PermissionAudience,
-    PermissionList,
     Role,
     RoleList,
     RoleRequest,
     RuntimeProvider,
-    ServiceType,
     SystemHealth,
     SystemInfo,
-    Transaction,
     TransactionAnalytics,
     WorkerState
 } from "./types.js";
 
-/** Configures application authentication and API access. */
-export interface MomobaseClientOptions {
-    baseUrl: string;
-    clientId: string;
-    clientSecret: string;
-    tokenSkewSeconds?: number;
-}
 /** Configures administrator authentication and API access. */
 export interface AdminClientOptions {
     baseUrl: string;
@@ -54,277 +39,6 @@ export interface AdminClientOptions {
     tokenSkewSeconds?: number;
     /** Receives token changes so callers can persist or clear a session. */
     onTokenChange?: (token: TokenSnapshot | undefined) => void;
-}
-/** The current session tokens and the epoch milliseconds at which they expire. */
-export interface TokenSnapshot {
-    accessToken: string;
-    refreshToken?: string;
-    expiresAt: number;
-}
-type Method = "GET" | "POST" | "PATCH" | "DELETE";
-type CachedToken = TokenSnapshot;
-
-const query = (o?: ListOptions) => {
-    const q = new URLSearchParams();
-    if (o?.page) q.set("page", String(o.page));
-    if (o?.perPage) q.set("per_page", String(o.perPage));
-    return q.size ? `?${q}` : "";
-};
-const endpoint = (path: string, id: string) =>
-    `${path}/${encodeURIComponent(id)}`;
-async function unwrap<T>(r: Response): Promise<T> {
-    if (!r.ok) throw await MomobaseAPIError.fromResponse(r);
-    const body = (await r.json()) as APIEnvelope<T>;
-    if (body && typeof body === "object" && "success" in body) {
-        if (!body.success)
-            throw new MomobaseAPIError(
-                r.status,
-                body.error?.code ?? "API_ERROR",
-                body.error?.message ?? body.message ?? "API error",
-                body
-            );
-        return body.data as T;
-    }
-    return body as T;
-}
-function cached(t: OAuthTokenResponse, skew: number): CachedToken {
-    return {
-        accessToken: t.access_token,
-        refreshToken: t.refresh_token,
-        expiresAt: Date.now() + Math.max(t.expires_in - skew, 1) * 1000
-    };
-}
-function validatePayment(
-    _kind: "collection" | "disbursement",
-    p: CreateCollectionRequest | CreateDisbursementRequest
-) {
-    // The account stays opaque here: what a valid one looks like is the provider's to
-    // decide, so the client only checks what the API requires of every payment.
-    if (!p.payment_method) throw new Error("payment_method is required");
-    if (!p.account) throw new Error("account is required");
-    if (!p.country || p.country.length !== 2)
-        throw new Error("country must be a 2-letter ISO code");
-}
-
-abstract class SessionClient {
-    protected readonly baseUrl: string;
-    protected readonly skew: number;
-    protected token?: CachedToken;
-    protected onTokenChange?: (token: TokenSnapshot | undefined) => void;
-    private refreshPromise?: Promise<OAuthTokenResponse>;
-    constructor(baseUrl: string, skew = 30) {
-        this.baseUrl = baseUrl.replace(/\/$/, "");
-        this.skew = skew;
-    }
-    protected abstract authenticate(
-        signal?: AbortSignal
-    ): Promise<OAuthTokenResponse>;
-    protected abstract refresh(
-        signal?: AbortSignal
-    ): Promise<OAuthTokenResponse>;
-    /** Clears the active session token. */
-    clearToken() {
-        this.token = undefined;
-        this.onTokenChange?.(undefined);
-    }
-    /** Returns the current session tokens, or undefined when there is no session. */
-    getToken(): TokenSnapshot | undefined {
-        return this.token ? { ...this.token } : undefined;
-    }
-    protected setToken(t: OAuthTokenResponse) {
-        this.token = cached(t, this.skew);
-        this.onTokenChange?.({ ...this.token });
-        return t;
-    }
-    private async refreshOnce(signal?: AbortSignal) {
-        if (this.refreshPromise) return this.refreshPromise;
-        const refresh = this.refresh(signal);
-        this.refreshPromise = refresh;
-        try {
-            return await refresh;
-        } finally {
-            if (this.refreshPromise === refresh)
-                this.refreshPromise = undefined;
-        }
-    }
-    protected async bearer(signal?: AbortSignal) {
-        if (!this.token) await this.authenticate(signal);
-        else if (this.token.expiresAt <= Date.now())
-            await this.refreshOnce(signal);
-        return this.token!.accessToken;
-    }
-    private send(
-        method: Method,
-        path: string,
-        payload: unknown,
-        options: RequestOptions,
-        accessToken: string
-    ) {
-        const headers: Record<string, string> = {
-            Authorization: `Bearer ${accessToken}`
-        };
-        if (method !== "GET") headers["Content-Type"] = "application/json";
-        if (options.idempotencyKey)
-            headers["Idempotency-Key"] = options.idempotencyKey;
-        return fetch(this.baseUrl + path, {
-            method,
-            headers,
-            body: method === "GET" ? undefined : JSON.stringify(payload ?? {}),
-            signal: options.signal
-        });
-    }
-    protected async request<T>(
-        method: Method,
-        path: string,
-        payload?: unknown,
-        options: RequestOptions = {}
-    ) {
-        const accessToken = await this.bearer(options.signal);
-        let response = await this.send(
-            method,
-            path,
-            payload,
-            options,
-            accessToken
-        );
-        if (response.status === 401) {
-            // Another request may already have refreshed while this one was in flight. Only
-            // rotate again when the rejected access token is still the active token.
-            if (this.token?.accessToken === accessToken)
-                await this.refreshOnce(options.signal);
-            response = await this.send(
-                method,
-                path,
-                payload,
-                options,
-                await this.bearer(options.signal)
-            );
-        }
-        return unwrap<T>(response);
-    }
-    protected get<T>(path: string, options?: RequestOptions) {
-        return this.request<T>("GET", path, undefined, options);
-    }
-    protected post<T>(
-        path: string,
-        payload?: unknown,
-        options?: RequestOptions
-    ) {
-        return this.request<T>("POST", path, payload, options);
-    }
-    protected patch<T>(
-        path: string,
-        payload?: unknown,
-        options?: RequestOptions
-    ) {
-        return this.request<T>("PATCH", path, payload, options);
-    }
-    protected delete<T>(path: string, options?: RequestOptions) {
-        return this.request<T>("DELETE", path, undefined, options);
-    }
-    protected async form(
-        path: string,
-        values: Record<string, string>,
-        signal?: AbortSignal
-    ) {
-        const r = await fetch(this.baseUrl + path, {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: new URLSearchParams(values),
-            signal
-        });
-        if (!r.ok) throw await MomobaseAPIError.fromResponse(r);
-        return this.setToken((await r.json()) as OAuthTokenResponse);
-    }
-}
-
-/** Calls application-authenticated Momobase endpoints. */
-export class MomobaseClient extends SessionClient {
-    /** Creates an application client. */
-    constructor(private readonly options: MomobaseClientOptions) {
-        super(options.baseUrl, options.tokenSkewSeconds);
-    }
-    /** Authenticates with the configured application credential. */
-    authenticate(signal?: AbortSignal) {
-        return this.form(
-            "/api/v1/token",
-            {
-                grant_type: "client_credentials",
-                client_id: this.options.clientId,
-                client_secret: this.options.clientSecret
-            },
-            signal
-        );
-    }
-    /** Refreshes the application session or authenticates again. */
-    async refresh(signal?: AbortSignal) {
-        if (!this.token?.refreshToken) return this.authenticate(signal);
-        try {
-            return await this.form(
-                "/api/v1/token/refresh",
-                {
-                    grant_type: "refresh_token",
-                    refresh_token: this.token.refreshToken
-                },
-                signal
-            );
-        } catch {
-            this.clearToken();
-            return this.authenticate(signal);
-        }
-    }
-    /** Discovers payment methods currently available for routing. */
-    readonly paymentMethods = {
-        /** Lists available payment methods. */
-        list: (
-            q: { serviceType?: ServiceType; country?: string } = {},
-            o: RequestOptions = {}
-        ) => {
-            const search = new URLSearchParams();
-            if (q.serviceType) search.set("service_type", q.serviceType);
-            if (q.country) search.set("country", q.country);
-            return this.get<AvailablePaymentMethods>(
-                `/api/v1/payment-methods${search.size ? `?${search}` : ""}`,
-                o
-            );
-        }
-    };
-    /** Creates collection payments. */
-    readonly collections = {
-        /** Creates a collection. */
-        create: (p: CreateCollectionRequest, o: RequestOptions = {}) => {
-            validatePayment("collection", p);
-            return this.post<CreatePaymentResponse>(
-                "/api/v1/collections",
-                p,
-                o
-            );
-        }
-    };
-    /** Creates disbursement payments. */
-    readonly disbursements = {
-        /** Creates a disbursement. */
-        create: (p: CreateDisbursementRequest, o: RequestOptions = {}) => {
-            validatePayment("disbursement", p);
-            return this.post<CreatePaymentResponse>(
-                "/api/v1/disbursements",
-                p,
-                o
-            );
-        }
-    };
-    /** Reads application transactions. */
-    readonly transactions = {
-        /** Gets a transaction by ID. */
-        get: (id: string, o: RequestOptions = {}) =>
-            this.get<Transaction>(endpoint("/api/v1/transactions", id), o),
-        /** Gets a transaction by application reference. */
-        getByReference: (ref: string, o: RequestOptions = {}) =>
-            this.get<Transaction>(
-                endpoint("/api/v1/transactions/by-reference", ref),
-                o
-            )
-    };
 }
 
 /** Calls administrator-authenticated Momobase endpoints. */
