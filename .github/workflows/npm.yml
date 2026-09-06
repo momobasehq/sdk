@@ -42,7 +42,7 @@ jobs:
               run: npm install --global npm@latest
 
             - name: Install dependencies
-              run: pnpm install --frozen-lockfile
+              run: pnpm ci
 
             - name: Configure release author
               run: |
