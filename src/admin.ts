@@ -3,20 +3,27 @@ import type { TokenSnapshot } from "./session.js";
 import type {
     AdminTransaction,
     AdminUser,
+    AdminUserListQuery,
     AnalyticsQuery,
     App,
     AppCredential,
+    AppListQuery,
     AuditLog,
+    AuditLogListQuery,
     ChargeSchedule,
     CreatedCredential,
+    CredentialListQuery,
     ListOptions,
     PaginatedData,
     PaymentRoute,
+    PaymentRouteListQuery,
     PermissionAudience,
     PermissionList,
     ProviderAccount,
+    ProviderAccountListQuery,
     ProviderBalance,
     ProviderBalanceResult,
+    ProviderHealthListQuery,
     ProviderHealthSnapshot,
     ProviderRegistry,
     Role,
@@ -26,6 +33,7 @@ import type {
     SystemHealth,
     SystemInfo,
     TransactionAnalytics,
+    TransactionListQuery,
     WorkerState
 } from "./types.js";
 
@@ -148,8 +156,8 @@ export class MomobaseAdminClient extends SessionClient {
     readonly users = {
         /** Gets the signed-in administrator. */
         me: () => this.get<AdminUser>("/api/admin/me"),
-        /** Lists administrators. */
-        list: (o?: ListOptions) =>
+        /** Lists administrators, optionally filtered, searched and sorted. */
+        list: (o?: AdminUserListQuery) =>
             this.list<PaginatedData<AdminUser>>("/api/admin/users", o),
         /** Creates an administrator. */
         create: (p: {
@@ -177,8 +185,8 @@ export class MomobaseAdminClient extends SessionClient {
     };
     /** Manages applications and credentials. */
     readonly apps = {
-        /** Lists applications. */
-        list: (o?: ListOptions) =>
+        /** Lists applications, optionally filtered, searched and sorted. */
+        list: (o?: AppListQuery) =>
             this.list<PaginatedData<App>>("/api/admin/apps", o),
         /** Creates an application. */
         create: (p: {
@@ -212,8 +220,8 @@ export class MomobaseAdminClient extends SessionClient {
             this.patch<unknown>(endpoint("/api/admin/apps", id) + "/status", {
                 status
             }),
-        /** Lists an application's credentials. */
-        credentials: (id: string, o?: ListOptions) =>
+        /** Lists an application's credentials, optionally filtered, searched and sorted. */
+        credentials: (id: string, o?: CredentialListQuery) =>
             this.list<PaginatedData<AppCredential>>(
                 `${endpoint("/api/admin/apps", id)}/credentials`,
                 o
@@ -240,8 +248,8 @@ export class MomobaseAdminClient extends SessionClient {
     };
     /** Manages provider accounts and runtime status. */
     readonly providers = {
-        /** Lists provider accounts. */
-        list: (o?: ListOptions) =>
+        /** Lists provider accounts, optionally filtered, searched and sorted. */
+        list: (o?: ProviderAccountListQuery) =>
             this.list<PaginatedData<ProviderAccount>>(
                 "/api/admin/providers",
                 o
@@ -307,8 +315,8 @@ export class MomobaseAdminClient extends SessionClient {
                 "/api/admin/balances/providers",
                 o
             ),
-        /** Lists provider health snapshots. */
-        health: (o?: ListOptions) =>
+        /** Lists provider health snapshots, optionally filtered, searched and sorted. */
+        health: (o?: ProviderHealthListQuery) =>
             this.list<PaginatedData<ProviderHealthSnapshot>>(
                 "/api/admin/health/providers",
                 o
@@ -316,8 +324,8 @@ export class MomobaseAdminClient extends SessionClient {
     };
     /** Manages payment routes. */
     readonly routes = {
-        /** Lists payment routes. */
-        list: (o?: ListOptions) =>
+        /** Lists payment routes, optionally filtered, searched and sorted. */
+        list: (o?: PaymentRouteListQuery) =>
             this.list<PaginatedData<PaymentRoute>>("/api/admin/routes", o),
         /** Creates a payment route. */
         create: (
@@ -332,14 +340,17 @@ export class MomobaseAdminClient extends SessionClient {
     };
     /** Reads transactions and audit logs. */
     readonly transactions = {
-        /** Lists transactions. */
-        list: (o?: ListOptions) =>
+        /** Lists transactions across every app, optionally filtered, searched and sorted. */
+        list: (o?: TransactionListQuery) =>
             this.list<PaginatedData<AdminTransaction>>(
                 "/api/admin/transactions",
                 o
             ),
-        /** Lists audit logs. */
-        auditLogs: (o?: ListOptions) =>
+        /** Gets one transaction from any app by its ID. */
+        get: (id: string) =>
+            this.get<AdminTransaction>(endpoint("/api/admin/transactions", id)),
+        /** Lists audit logs, optionally filtered, searched and sorted. */
+        auditLogs: (o?: AuditLogListQuery) =>
             this.list<PaginatedData<AuditLog>>("/api/admin/audit-logs", o)
     };
     /** Reads transaction analytics. */

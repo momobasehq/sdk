@@ -15,11 +15,36 @@ export interface TokenSnapshot {
 type Method = "GET" | "POST" | "PATCH" | "DELETE";
 type CachedToken = TokenSnapshot;
 
-/** Renders list pagination as a query string. */
+/** Options that shape the request itself rather than its query string. */
+const skipped = new Set(["page", "perPage", "signal"]);
+type QueryValue = string | number | boolean | Date;
+/** Fields whose API name is not their snake_case: the created-at range is from/to. */
+const renamed: Record<string, string> = {
+    createdAfter: "from",
+    createdBefore: "to"
+};
+/** Renders list options as a query string: camelCase fields become the API's
+ * snake_case, arrays a comma-separated "any of", and dates RFC 3339. */
 const query = (o?: ListOptions) => {
     const q = new URLSearchParams();
     if (o?.page) q.set("page", String(o.page));
     if (o?.perPage) q.set("per_page", String(o.perPage));
+    // List queries extend ListOptions with filter fields, so entries are read wider.
+    const entries = Object.entries(o ?? {}) as [
+        string,
+        QueryValue | QueryValue[] | undefined | null
+    ][];
+    for (const [key, raw] of entries) {
+        if (skipped.has(key) || raw === undefined || raw === null) continue;
+        const values = (Array.isArray(raw) ? raw : [raw]).map((value) =>
+            value instanceof Date ? value.toISOString() : String(value)
+        );
+        const value = values.filter((part) => part !== "").join(",");
+        if (value === "") continue;
+        const name =
+            renamed[key] ?? key.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
+        q.set(name, value);
+    }
     return q.size ? `?${q}` : "";
 };
 /** Appends an escaped resource id to a collection path. */

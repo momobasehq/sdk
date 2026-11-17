@@ -56,6 +56,89 @@ export interface ListOptions {
     perPage?: number;
     signal?: AbortSignal;
 }
+/** Matches one value, or any of several. */
+export type OneOrMany<T> = T | T[];
+/**
+ * Narrows, searches and orders an admin list on the server. Filters are exact
+ * matches; a field the list does not accept is rejected with a 400.
+ */
+export interface ListQuery<TSort extends string> extends ListOptions {
+    /** Case-insensitive search across the list's searchable fields. */
+    q?: string;
+    sort?: TSort;
+    order?: "asc" | "desc";
+    /** Created at or after this time. */
+    createdAfter?: string | Date;
+    /** Created before this time. */
+    createdBefore?: string | Date;
+}
+/** Filters and sorts the admin transaction list. */
+export interface TransactionListQuery extends ListQuery<
+    "created_at" | "amount" | "status" | "updated_at"
+> {
+    status?: OneOrMany<TransactionStatus>;
+    serviceType?: OneOrMany<ServiceType>;
+    paymentMethod?: OneOrMany<PaymentMethod>;
+    country?: OneOrMany<string>;
+    currency?: OneOrMany<string>;
+    appId?: OneOrMany<string>;
+    selectedProviderAccountId?: OneOrMany<string>;
+}
+/** Filters and sorts the audit log. */
+export interface AuditLogListQuery extends ListQuery<"created_at" | "action"> {
+    action?: OneOrMany<string>;
+    actorType?: OneOrMany<string>;
+    actorId?: OneOrMany<string>;
+    entityType?: OneOrMany<string>;
+    entityId?: OneOrMany<string>;
+}
+/** Filters and sorts the application list. */
+export interface AppListQuery extends ListQuery<
+    "name" | "status" | "created_at"
+> {
+    status?: OneOrMany<string>;
+    environment?: OneOrMany<"sandbox" | "production">;
+    currency?: OneOrMany<string>;
+}
+/** Filters and sorts an application's credentials. */
+export interface CredentialListQuery extends ListQuery<
+    "name" | "status" | "last_used_at" | "created_at"
+> {
+    status?: OneOrMany<string>;
+}
+/** Filters and sorts the administrator list. */
+export interface AdminUserListQuery extends ListQuery<
+    "name" | "email" | "created_at"
+> {
+    role?: OneOrMany<string>;
+    status?: OneOrMany<string>;
+}
+/** Filters and sorts provider accounts. */
+export interface ProviderAccountListQuery extends ListQuery<
+    "name" | "provider_code" | "updated_at" | "created_at"
+> {
+    providerCode?: OneOrMany<string>;
+    environment?: OneOrMany<"sandbox" | "production">;
+    currency?: OneOrMany<string>;
+    active?: boolean;
+}
+/** Filters and sorts provider health snapshots. */
+export interface ProviderHealthListQuery extends ListQuery<
+    "latency_ms" | "consecutive_failures" | "updated_at"
+> {
+    status?: OneOrMany<string>;
+    circuitState?: OneOrMany<string>;
+    providerAccountId?: OneOrMany<string>;
+}
+/** Filters and sorts payment routes. */
+export interface PaymentRouteListQuery extends ListQuery<
+    "priority" | "created_at"
+> {
+    serviceType?: OneOrMany<ServiceType>;
+    paymentMethod?: OneOrMany<PaymentMethod>;
+    providerAccountId?: OneOrMany<string>;
+    active?: boolean;
+}
 /** Controls an individual API request. */
 export interface RequestOptions {
     idempotencyKey?: string;
