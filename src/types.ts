@@ -18,12 +18,12 @@ export type TransactionStatus =
     | "unknown"
     | "cancelled"
     | "expired";
-/** A flat or percentage charge calculation. */
-export type ChargeType = "flat" | "percentage";
-/** Defines one charge value and calculation type. */
+/** Defines one fee: a flat amount plus a percentage of the transaction amount. */
 export interface ChargeRule {
-    type: ChargeType;
-    value: number;
+    /** Fixed fee in currency minor units. */
+    flat: number;
+    /** Proportional fee in basis points (100 = 1%), at most 10,000. */
+    percentage: number;
 }
 /** Defines collection and disbursement charges. */
 export interface ChargeSchedule {
