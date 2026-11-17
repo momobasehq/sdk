@@ -78,6 +78,24 @@ Payment calls accept `RequestOptions`; list calls accept `ListOptions`.
 { page?: number, perPage?: number, signal?: AbortSignal } // ListOptions
 ```
 
+Admin lists also accept a typed query (`TransactionListQuery`, `AppListQuery`,
+`AdminUserListQuery`, and so on) that filters, searches and sorts on the server.
+Filters are exact matches, and an array matches any of its values. The server
+rejects a field the list does not support with a 400.
+
+```ts
+await admin.transactions.list({
+    status: ["failed", "expired"],
+    appId: "app_123",
+    q: "256700", // case-insensitive search
+    sort: "amount",
+    order: "desc",
+    createdAfter: new Date("2026-01-01"),
+    page: 1,
+    perPage: 50
+});
+```
+
 ## Services
 
 > Each service call returns a `Promise` resolving to the unwrapped API data.
@@ -113,11 +131,14 @@ Payment calls accept `RequestOptions`; list calls accept `ListOptions`.
 // Returns a single transaction by the reference the application supplied.
 🔓 mb.transactions.getByReference(reference, options = {});
 
-// Returns a paginated transactions list across all applications.
-🔐 admin.transactions.list(options = {});
+// Returns a paginated, filterable transactions list across all applications.
+🔐 admin.transactions.list(query = {});
 
-// Returns a paginated audit logs list.
-🔐 admin.transactions.auditLogs(options = {});
+// Returns any application's transaction by its id.
+🔐 admin.transactions.get(transactionId);
+
+// Returns a paginated, filterable audit logs list.
+🔐 admin.transactions.auditLogs(query = {});
 ```
 
 ### SystemService
@@ -162,7 +183,7 @@ Payment calls accept `RequestOptions`; list calls accept `ListOptions`.
 🔐 admin.users.me();
 
 // Returns a paginated administrators list.
-🔐 admin.users.list(options = {});
+🔐 admin.users.list(query = {});
 
 // Creates an administrator.
 🔐 admin.users.create({ name, email, password, role });
@@ -181,7 +202,7 @@ Payment calls accept `RequestOptions`; list calls accept `ListOptions`.
 
 ```ts
 // Returns a paginated applications list.
-🔐 admin.apps.list(options = {});
+🔐 admin.apps.list(query = {});
 
 // Creates an application.
 🔐 admin.apps.create({ name, description, environment, currency, charges });
@@ -196,7 +217,7 @@ Payment calls accept `RequestOptions`; list calls accept `ListOptions`.
 🔐 admin.apps.changeStatus(appId, status);
 
 // Returns a paginated list of an application's credentials.
-🔐 admin.apps.credentials(appId, options = {});
+🔐 admin.apps.credentials(appId, query = {});
 
 // Creates an application credential. The secret is returned only once.
 🔐 admin.apps.createCredential(appId, { name, scopes, expires_at });
@@ -212,7 +233,7 @@ Payment calls accept `RequestOptions`; list calls accept `ListOptions`.
 
 ```ts
 // Returns a paginated provider accounts list.
-🔐 admin.providers.list(options = {});
+🔐 admin.providers.list(query = {});
 
 // Returns a single provider account by its id.
 🔐 admin.providers.get(accountId);
@@ -247,14 +268,14 @@ Payment calls accept `RequestOptions`; list calls accept `ListOptions`.
 🔐 admin.providers.activeBalances(options = {});
 
 // Returns a paginated list of provider health snapshots.
-🔐 admin.providers.health(options = {});
+🔐 admin.providers.health(query = {});
 ```
 
 ### RouteService
 
 ```ts
 // Returns a paginated payment routes list.
-🔐 admin.routes.list(options = {});
+🔐 admin.routes.list(query = {});
 
 // Creates a payment route.
 🔐 admin.routes.create(bodyParams);
